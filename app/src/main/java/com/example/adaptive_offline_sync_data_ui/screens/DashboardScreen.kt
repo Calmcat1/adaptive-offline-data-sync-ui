@@ -1,7 +1,8 @@
 package com.example.adaptive_offline_sync_data_ui.screens
 
-
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,16 +11,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SyncAlt
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,19 +33,25 @@ data class SyncRecord(
 )
 
 enum class SyncStatus(val label: String, val backgroundColor: Color, val contentColor: Color) {
-    SUCCESS("success", Color(0xFFB9F6CA), Color(0xFF1B5E20)),
-    FAILURE("Failure", Color(0xFFFFCDD2), Color(0xFFB71C1C)),
-    PENDING("Pending", Color(0xFFFFF59D), Color(0xFFF57F17))
+    SUCCESS("Success", Color(0xFFE8F5E9), Color(0xFF2E7D32)),
+    FAILURE("Failure", Color(0xFFFFEBEE), Color(0xFFC62828)),
+    PENDING("Pending", Color(0xFFFFF8E1), Color(0xFFF57F17))
 }
 
 // --- Main Screen ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen() {
+fun DashboardScreen(
+    onCollectDataClick: () -> Unit = {},
+    onMyRecordsClick: () -> Unit = {},
+    onSyncStatusClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+    onBackClick: () -> Unit = {}
+) {
     val records = listOf(
-        SyncRecord("record#101", "12 Aug 2026, 14:30", SyncStatus.SUCCESS),
-        SyncRecord("record#202", "15 Aug 2026, 10:02", SyncStatus.FAILURE),
-        SyncRecord("record#303", "5 Sept 2026, 15:30", SyncStatus.PENDING)
+        SyncRecord("Record #101", "12 Aug 2026, 14:30", SyncStatus.SUCCESS),
+        SyncRecord("Record #202", "15 Aug 2026, 10:02", SyncStatus.FAILURE),
+        SyncRecord("Record #303", "5 Sept 2026, 15:30", SyncStatus.PENDING)
     )
 
     Scaffold(
@@ -52,227 +59,427 @@ fun DashboardScreen() {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Field Collect",
+                        text = "Dashboard",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                        fontSize = 18.sp,
+                        color = Color(0xFF1A1A1A)
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = { /* Handle back click */ }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
+                    containerColor = Color(0xFFF8F9FA)
                 )
             )
         },
-        bottomBar = { BottomNavigationBar() },
-        containerColor = Color.White
+        bottomBar = { BottomNavigationBar(onSettingsClick = onSettingsClick) },
+        containerColor = Color(0xFFF8F9FA)
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Status Banner
-            item { StatusCard() }
+            item { Spacer(modifier = Modifier.height(4.dp)) }
 
-            // 2x2 Grid Actions
-            item { ActionGridSection() }
+            // Modern Status Banner Card
+            item { ModernStatusCard() }
 
-            // Records List Header / Spacer
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+            // Section Label
+            item {
+                Text(
+                    text = "Quick Actions",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color(0xFF1A1A1A)
+                )
+            }
 
-            // Sync Records
+            // 2x2 Grid Actions with Custom Icons & Colors
+            item {
+                ModernActionGridSection(
+                    onCollectDataClick = onCollectDataClick,
+                    onMyRecordsClick = onMyRecordsClick,
+                    onSyncStatusClick = onSyncStatusClick,
+                    onSettingsClick = onSettingsClick
+                )
+            }
+
+            // Recent Sync Activity Header
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Recent Activity",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF1A1A1A)
+                    )
+                    Text(
+                        text = "View All",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF2196F3),
+                        modifier = Modifier.clickable { onSyncStatusClick() }
+                    )
+                }
+            }
+
+            // Sync Records List
             items(records) { record ->
-                RecordItemRow(record = record)
+                ModernRecordItemCard(record = record)
+            }
+
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
+    }
+}
+
+// --- Modern Top Status Card ---
+@Composable
+fun ModernStatusCard() {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF1E293B), // Slate dark header
+                            Color(0xFF0F172A)
+                        )
+                    )
+                )
+                .padding(20.dp)
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(Color(0xFF4ADE80).copy(alpha = alpha), CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "System Online",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    // Live Pill Badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "Auto-Sync Active",
+                            color = Color(0xFF818CF8),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "LAST SYNCHRONIZATION",
+                            color = Color.Gray,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "10 minutes ago",
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TelemetryBadge(icon = Icons.Default.Wifi, label = "4G")
+                        TelemetryBadge(icon = Icons.Default.BatteryFull, label = "98%")
+                    }
+                }
             }
         }
     }
 }
 
-// --- Top Status Card ---
 @Composable
-fun StatusCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F2F2)),
-        border = CardDefaults.outlinedCardBorder()
+private fun TelemetryBadge(icon: ImageVector, label: String) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color.White.copy(alpha = 0.1f)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = label,
+                color = Color.White.copy(alpha = 0.8f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+// --- Modern 2x2 Action Tiles ---
+@Composable
+fun ModernActionGridSection(
+    onCollectDataClick: () -> Unit = {},
+    onMyRecordsClick: () -> Unit = {},
+    onSyncStatusClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ModernActionTile(
+                title = "Collect Data",
+                subtitle = "New Entry",
+                icon = Icons.Default.Add,
+                accentColor = Color(0xFF2563EB),
+                modifier = Modifier.weight(1f),
+                onClick = onCollectDataClick
+            )
+            ModernActionTile(
+                title = "My Records",
+                subtitle = "Room Storage",
+                icon = Icons.Default.Folder,
+                accentColor = Color(0xFF059669),
+                modifier = Modifier.weight(1f),
+                onClick = onMyRecordsClick
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ModernActionTile(
+                title = "Sync Status",
+                subtitle = "Pending: 12",
+                icon = Icons.Default.Sync,
+                accentColor = Color(0xFFD97706),
+                modifier = Modifier.weight(1f),
+                onClick = onSyncStatusClick
+            )
+            ModernActionTile(
+                title = "Settings",
+                subtitle = "Preferences",
+                icon = Icons.Default.Settings,
+                accentColor = Color(0xFF4B5563),
+                modifier = Modifier.weight(1f),
+                onClick = onSettingsClick
+            )
+        }
+    }
+}
+
+@Composable
+fun ModernActionTile(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    Card(
+        modifier = modifier.height(96.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(accentColor.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = Color.LightGray,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Column {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color(0xFF1E293B)
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
+// --- Modern Record Row Item ---
+@Composable
+fun ModernRecordItemCard(record: SyncRecord) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .background(Color(0xFF4CAF50), CircleShape)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF1F5F9)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SyncAlt,
+                    contentDescription = null,
+                    tint = Color(0xFF475569),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Online",
+                    text = record.id,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 14.sp,
+                    color = Color(0xFF0F172A)
                 )
                 Text(
-                    text = "Last Sync: 10 mins ago",
+                    text = record.date,
                     color = Color.Gray,
                     fontSize = 12.sp
                 )
             }
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = record.status.backgroundColor
+            ) {
+                Text(
+                    text = record.status.label,
+                    color = record.status.contentColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }
 
-// --- 2x2 Action Buttons Section ---
+// --- Modern Bottom Navigation Bar ---
 @Composable
-fun ActionGridSection() {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ActionTile(title = "Collect Data", modifier = Modifier.weight(1f))
-            ActionTile(title = "My records", modifier = Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ActionTile(title = "Sync Status", modifier = Modifier.weight(1f))
-            ActionTile(title = "Settings", modifier = Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-fun ActionTile(title: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.height(64.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFAFA)),
-        border = CardDefaults.outlinedCardBorder(),
-        onClick = { /* Tile click action */ }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = Color.Black
-            )
-        }
-    }
-}
-
-// --- Sync Record Row ---
-@Composable
-fun RecordItemRow(record: SyncRecord) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Icon avatar
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(Color(0xFFE0E0E0), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.SyncAlt,
-                contentDescription = null,
-                tint = Color.White
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Title and Date
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = record.id,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-            Text(
-                text = record.date,
-                color = Color.Gray,
-                fontSize = 12.sp
-            )
-        }
-
-        // Status Badge
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = record.status.backgroundColor
-        ) {
-            Text(
-                text = record.status.label,
-                color = record.status.contentColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-        }
-    }
-}
-
-// --- Bottom Navigation Bar ---
-@Composable
-fun BottomNavigationBar() {
+fun BottomNavigationBar(onSettingsClick: () -> Unit = {}) {
     NavigationBar(
         containerColor = Color.White,
-        tonalElevation = 4.dp
+        tonalElevation = 8.dp
     ) {
         NavigationBarItem(
             selected = true,
             onClick = { },
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home") }
+            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+            label = { Text("Home", fontSize = 11.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = Color(0xFF1E293B),
+                indicatorColor = Color(0xFFF1F5F9)
+            )
         )
         NavigationBarItem(
             selected = false,
             onClick = { },
-            icon = { Icon(Icons.Default.CalendarToday, contentDescription = "Calendar") }
+            icon = { Icon(Icons.Outlined.CalendarToday, contentDescription = "Calendar") },
+            label = { Text("Calendar", fontSize = 11.sp) }
         )
         NavigationBarItem(
             selected = false,
             onClick = { },
-            icon = {
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .background(Color.Transparent, CircleShape)
-                        .padding(1.dp)
-                ) {
-                    // Outlined circle indicator
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.Transparent,
-                        border = androidx.compose.foundation.BorderStroke(2.dp, Color.Gray),
-                        modifier = Modifier.fillMaxSize()
-                    ) {}
-                }
-            }
+            icon = { Icon(Icons.Outlined.BarChart, contentDescription = "Analytics") },
+            label = { Text("Analytics", fontSize = 11.sp) }
         )
         NavigationBarItem(
             selected = false,
-            onClick = { },
-            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") }
+            onClick = onSettingsClick,
+            icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
+            label = { Text("Settings", fontSize = 11.sp) }
         )
     }
 }

@@ -19,17 +19,40 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.adaptive_offline_sync_data_ui.viewModel.LoginUiState
+import com.example.adaptive_offline_sync_data_ui.viewModel.LoginViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onBackClick: () -> Unit = {},
-    onLogInClick: () -> Unit = {},
+    onLoginSuccess: (token: String, name: String, email: String) -> Unit = { _, _, _ -> },
     onCreateAccountClick: () -> Unit = {},
-    onForgotPasswordClick: () -> Unit = {}
+    onForgotPasswordClick: () -> Unit = {},
+    viewModel: LoginViewModel = viewModel()
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    val uiState = viewModel.uiState
+
+    // Trigger navigation / token handling on login success
+    LaunchedEffect(uiState) {
+        if (uiState is LoginUiState.Success) {
+            // Format name from email input if API response returns only token
+            val derivedName = email.substringBefore("@")
+                .replace(".", " ")
+                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+            onLoginSuccess(
+                uiState.token,
+                derivedName.ifBlank { "Data Officer" },
+                email.ifBlank { "dataofficer@gmail.com" }
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -104,11 +127,22 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Error Message Display
+            if (uiState is LoginUiState.Error) {
+                Text(
+                    text = uiState.message,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
 
             // Log In Button
             Button(
-                onClick = onLogInClick,
+                onClick = { viewModel.performLogin(email, password) },
+                enabled = uiState !is LoginUiState.Loading && email.isNotBlank() && password.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -118,7 +152,15 @@ fun LoginScreen(
                     contentColor = Color.White
                 )
             ) {
-                Text("Log In", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                if (uiState is LoginUiState.Loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Log In", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
