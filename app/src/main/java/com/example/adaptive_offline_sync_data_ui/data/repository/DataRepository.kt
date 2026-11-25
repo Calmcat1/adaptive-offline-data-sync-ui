@@ -1,30 +1,36 @@
 package com.example.adaptive_offline_sync_data_ui.data.repository
 
-import android.content.Context
 import com.example.adaptive_offline_sync_data_ui.data.entity.DataRecordEntity
-import com.example.adaptive_offline_sync_data_ui.data.local.dao.DataRecordDao
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
+import com.example.adaptive_offline_sync_data_ui.data.dao.DataRecordDao
+import com.example.adaptive_offline_sync_data_ui.data.local.TokenManager
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 
-class DataRepository(
-    private val dataRecordDao: DataRecordDao
+class DataRecordRepository(
+    private val dataRecordDao: DataRecordDao,
+    private val tokenManager: TokenManager
 ) {
 
-    suspend fun insertRecord(record: DataRecordEntity): Long = withContext(Dispatchers.IO) {
-        dataRecordDao.insert(record)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getUserRecords(): Flow<Pair<String, List<DataRecordEntity>>> {
+        return tokenManager.getUserEmail.flatMapLatest { email ->
+            val activeEmail = email.ifBlank { "dataofficer@gmail.com" }
+            dataRecordDao.getRecordsForUser(activeEmail).map { records ->
+                activeEmail to records
+            }
+        }
     }
 
-    suspend fun getAllRecords(): List<DataRecordEntity> = withContext(Dispatchers.IO) {
-        dataRecordDao.getAllRecords()
+    suspend fun saveRecordForCurrentUser(record: DataRecordEntity) {
+        val activeEmail = tokenManager.getUserEmail.first().ifBlank { "dataofficer@gmail.com" }
+        val userScopedRecord = record.copy(userEmail = activeEmail)
+        dataRecordDao.insertRecord(userScopedRecord)
     }
 
-    suspend fun getUnsyncedRecords(): List<DataRecordEntity> = withContext(Dispatchers.IO) {
-        dataRecordDao.getUnsyncedRecords()
+    suspend fun deleteRecord(recordId: String) {
+        dataRecordDao.deleteByClientRecordIds(listOf(recordId))
     }
-
-    suspend fun clearAllRecords() = withContext(Dispatchers.IO) {
-        dataRecordDao.deleteAll()
-    }
-
 }

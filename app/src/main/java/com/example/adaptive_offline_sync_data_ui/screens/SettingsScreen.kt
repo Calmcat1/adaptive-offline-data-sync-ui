@@ -184,7 +184,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Export Telemetry Log (CSV)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Text("Export Network Metrics Log (CSV)", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     }
                 }
             }

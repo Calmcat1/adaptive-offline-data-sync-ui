@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.adaptive_offline_sync_data_ui.data.remote.NetworkClient
 import com.example.adaptive_offline_sync_data_ui.viewModel.LoginUiState
 import com.example.adaptive_offline_sync_data_ui.viewModel.LoginViewModel
 import java.util.Locale
@@ -36,10 +37,19 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+
+
     val uiState = viewModel.uiState
 
     // Trigger navigation / token handling on login success
     LaunchedEffect(uiState) {
+        val response = NetworkClient.authService.login(email, password)
+        if (response.isSuccessful) {
+            val token = response.body()?.accessToken
+            NetworkClient.setAccessToken(token)
+
+        }
+
         if (uiState is LoginUiState.Success) {
             // Format name from email input if API response returns only token
             val derivedName = email.substringBefore("@")

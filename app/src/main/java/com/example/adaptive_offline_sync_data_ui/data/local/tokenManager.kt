@@ -6,10 +6,12 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "auth_prefs")
 private const val TAG = "TokenManagerDebug"
+
 
 class TokenManager(private val context: Context) {
 
@@ -17,6 +19,7 @@ class TokenManager(private val context: Context) {
         private val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
         private val USER_NAME_KEY = stringPreferencesKey("user_name")
         private val USER_EMAIL_KEY = stringPreferencesKey("user_email")
+        private val LAST_SYNC_TIMESTAMP_KEY = stringPreferencesKey("last_sync_timestamp")
     }
 
     // --- READ FLOWS ---
@@ -46,6 +49,16 @@ class TokenManager(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[ACCESS_TOKEN_KEY] = token
         }
+    }
+
+    suspend fun saveLastSyncTimestamp(timestamp: String) {
+        context.dataStore.edit { prefs ->
+            prefs[LAST_SYNC_TIMESTAMP_KEY] = timestamp
+        }
+    }
+
+    suspend fun getLastSyncTimestamp(): String? {
+        return context.dataStore.data.map { it[LAST_SYNC_TIMESTAMP_KEY] }.firstOrNull()
     }
 
     suspend fun saveUserSession(token: String, name: String, email: String) {

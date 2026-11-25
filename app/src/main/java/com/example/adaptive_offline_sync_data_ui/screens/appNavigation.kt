@@ -13,9 +13,11 @@ sealed interface AppDestination {
     object SignUp : AppDestination
     object Welcome : AppDestination
     object Dashboard : AppDestination
-//    object Records : AppDestination
-      object Settings : AppDestination
-      object DataCollection : AppDestination
+    object UserRecords : AppDestination
+    object Settings : AppDestination
+    object DataCollection : AppDestination
     object SyncStatus: AppDestination
+    object Analytics : AppDestination
+    object Calender: AppDestination
 
 }
